@@ -163,7 +163,8 @@ When it is ready to ship with the suite:
 
 - [x] Create `github.com/hyprtk/hyprtk-editor`, push `main`, tag `v0.1.1`.
 - [x] Vendor the tree into `hyprtk-merged/installer/hyprtk-editor/`
-      (exclude `.git`, `tests/`, `scripts/`, `PLAN.md`, `RESEARCH.md`, `shot.png`).
+      (exclude `.git`, `tests/`, `scripts/`, `PLAN.md`, `RESEARCH.md`,
+      `shot.png`, plus the repo-only `Makefile` and `.gitignore`).
 - [x] Call `installer/hyprtk-editor/install.sh` from `1-install.sh` after the
       file manager (the suite installer has no uninstall path).
 - [x] Add Pygments per family (`python-pygments`, `python3-pygments`,
