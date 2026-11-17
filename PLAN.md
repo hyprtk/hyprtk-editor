@@ -73,25 +73,28 @@ what is deliberately deferred, and how the app joins the suite.
 The app lives in its own repo (`hyprtk-editor`), like hyprtk-fm and bar-qt.
 When it is ready to ship with the suite:
 
-- [ ] Create `github.com/hyprtk/hyprtk-editor`, push `main`, tag `v0.1.0`.
-- [ ] Vendor the tree into `hyprtk-merged/installer/hyprtk-editor/`
+- [x] Create `github.com/hyprtk/hyprtk-editor`, push `main`, tag `v0.1.1`.
+- [x] Vendor the tree into `hyprtk-merged/installer/hyprtk-editor/`
       (exclude `.git`, `tests/`, `scripts/`, `PLAN.md`, `RESEARCH.md`, `shot.png`).
-- [ ] Call `installer/hyprtk-editor/install.sh` from `1-install.sh` after the
-      file manager, and add the uninstall path.
-- [ ] Add the app to `hyprtk/packages/system.sh`? **No new packages needed** —
-      PySide6 is already there; Pygments may need adding per family:
-      `python-pygments`, `python3-pygments`, `python3-pygments`,
-      `python3-pygments`, `python3-pygments`, `py3-pygments`.
-      Run the T1 matrix to confirm the name on each family.
-- [ ] Add a **bar quick link** ("Editor") and a `Super+E` style keybind, using
-      the same pattern as the Files quick link.
+- [x] Call `installer/hyprtk-editor/install.sh` from `1-install.sh` after the
+      file manager (the suite installer has no uninstall path).
+- [x] Add Pygments per family (`python-pygments`, `python3-pygments`,
+      `python3-pygments`, `python3-pygments`, `python3-Pygments`,
+      `py3-pygments`) plus the QML runtime modules where the distro splits them;
+      T1 resolved every name.
+- [x] Add the **Editor** quick link (quick links + arc menu) and the `Super+E`
+      keybind.
 - [ ] Add the desktop entry to the ISO package set / `airootfs` skel if the ISO
       should ship it.
-- [ ] Decide the default handler: `xdg-mime default hyprtk-editor.desktop
-      text/plain` in the installer, or leave it to `--set-default`.
-- [ ] `push-all` (gate: T1 matrix, T2 dry-run, package audit) and reinstall the
-      suite; verify `hyprtk-edit --version` from the installed copy.
-- [ ] CHANGELOG + suite tag.
+- [x] Default handler: `text/plain` and `text/markdown` via
+      `set-default-apps.sh` and the installer's `--set-default`.
+- [x] `push-all` gate: T1 1340 resolvable / 26 AUR / 89 allowed / 0 unexpected,
+      T2 9/9, audit 1455 rows / 0 unexpected (16 provides-only `Extra (TODO)`,
+      15 pre-existing). Suite v1.6.0 tagged on dotfiles, live fast-forwarded.
+- [x] Reinstall: editor 0.1.1, bar 0.43.7, default handlers set, bar restarted.
+
+Release state: **hyprtk-editor 0.1.1**, bar-qt 0.43.7, suite v1.6.0
+(dotfiles `0f9c706ed`).
 
 ## Known constraints to keep in mind
 
