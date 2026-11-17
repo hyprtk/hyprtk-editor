@@ -11,4 +11,8 @@ SELF=$(readlink -f "$0")
 ROOT=$(CDPATH= cd -- "$(dirname -- "$SELF")/.." && pwd)
 export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
 
-exec python3 -m hyprtk_editor "$@"
+# install.sh creates this only when the distro's PySide6 lacks the QML bindings.
+PY=python3
+[ -x "$ROOT/venv/bin/python" ] && PY="$ROOT/venv/bin/python"
+
+exec "$PY" -m hyprtk_editor "$@"

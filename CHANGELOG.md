@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-11-17
+
+- Installer: fall back to a private PyPI venv when the distro's PySide6 lacks
+  the QML bindings (Debian 12, Ubuntu 24.04) or Pygments is missing. The
+  launcher prefers `venv/bin/python` when it exists.
+
 ## 0.1.0 — 2026-11-16
 
 First working scaffold of the suite's text editor.

@@ -50,14 +50,6 @@ if [ "${HYPRTK_DRYRUN:-}" = "1" ]; then
 fi
 
 command -v "$PY" >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 1; }
-"$PY" -c 'import PySide6' >/dev/null 2>&1 || {
-    echo "PySide6 is required (python-pyside6 / python3-pyside6 / py3-pyside6)" >&2
-    exit 1
-}
-"$PY" -c 'import pygments' >/dev/null 2>&1 || {
-    echo "Pygments is required (python-pygments / python3-pygments)" >&2
-    exit 1
-}
 
 mkdir -p "$PREFIX" "$BIN" "$APPS"
 for item in hyprtk_editor bin; do
@@ -88,6 +80,19 @@ if [ "$set_default" = "1" ] && command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default hyprtk-editor.desktop text/plain || true
     xdg-mime default hyprtk-editor.desktop text/markdown || true
     echo ":: set as the default handler for text/plain and text/markdown"
+fi
+
+# PySide6 normally comes from the distro. Debian/Ubuntu split it and only
+# package the Widgets modules (the QML bindings are missing on Debian 12 and
+# Ubuntu 24.04), so fall back to PyPI in a private venv -- the same pattern the
+# hyprtk-usb / iso-creator GUIs use. Pygments is a small pip install too when
+# the distro does not ship it.
+if ! "$PY" -c 'import PySide6.QtQml, PySide6.QtQuick' >/dev/null 2>&1 \
+    || ! "$PY" -c 'import pygments' >/dev/null 2>&1; then
+    echo ":: PySide6 QML bindings or Pygments missing — installing into $PREFIX/venv"
+    "$PY" -m venv --system-site-packages "$PREFIX/venv"
+    "$PREFIX/venv/bin/pip" install --quiet --upgrade pip
+    "$PREFIX/venv/bin/pip" install --quiet "PySide6>=6.6" "Pygments>=2.14"
 fi
 
 echo "installed hyprtk-editor to $PREFIX"
