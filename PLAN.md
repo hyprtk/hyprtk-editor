@@ -96,7 +96,7 @@ When it is ready to ship with the suite:
       15 pre-existing). Suite v1.6.0 tagged on dotfiles, live fast-forwarded.
 - [x] Reinstall: editor 0.1.1, bar 0.43.7, default handlers set, bar restarted.
 
-Release state: **hyprtk-editor 0.1.2**, ver 0.1.2, hyprtk-fm 1.8.7, bar-qt
+Release state: **hyprtk-editor 0.1.2**, hyprtk-fm 1.8.7, bar-qt
 0.43.8, suite v1.7.0 (dotfiles `2b3dc5605`).
 
 ## Known constraints to keep in mind
