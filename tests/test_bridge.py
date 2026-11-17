@@ -125,6 +125,56 @@ class BridgeTest(unittest.TestCase):
         self.assertTrue(palette["background"].isValid())
         self.assertTrue(palette["syntax"]["comment"].isValid())
 
+    def test_git_status_shape(self) -> None:
+        # Outside a repository the gutter gets a well-formed "nothing" answer
+        # rather than an exception or a half-filled map.
+        status = self.bridge.gitStatus(str(Path(self.tmp.name) / "loose.txt"))
+        self.assertEqual(set(status), {"ok", "repo", "kind", "lines", "error"})
+        self.assertFalse(status["ok"])
+        self.assertEqual(status["kind"], "none")
+
+    def test_write_pdf_uses_the_pane_text(self) -> None:
+        from PySide6.QtGui import QTextDocument
+
+        document = QTextDocument()
+        document.setPlainText("alpha\nbeta\n")
+
+        class FakePane:
+            alias = "text"
+            path = str(Path(self.tmp.name) / "notes.txt")
+
+            def __init__(self, doc: QTextDocument) -> None:
+                self.document = doc
+
+        self.bridge._editors["doc"] = FakePane(document)
+        target = str(Path(self.tmp.name) / "out.pdf")
+        result = self.bridge.writePdf("doc", target)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["path"], target)
+        self.assertGreater(result["bytes"], 500)
+
+    def test_write_pdf_without_a_document(self) -> None:
+        self.assertFalse(self.bridge.writePdf("missing", str(Path(self.tmp.name) / "x.pdf"))["ok"])
+
+    def test_export_pdf_cancel_writes_nothing(self) -> None:
+        from PySide6.QtGui import QTextDocument
+
+        document = QTextDocument()
+        document.setPlainText("alpha\n")
+
+        class FakePane:
+            alias = "text"
+            path = ""
+
+            def __init__(self, doc: QTextDocument) -> None:
+                self.document = doc
+
+        self.bridge._editors["doc"] = FakePane(document)
+        with mock.patch.object(self.bridge, "_save_dialog", return_value=""):
+            result = self.bridge.exportPdf("doc")
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["cancelled"])
+
 
 class FileDialogTest(unittest.TestCase):
     """The dialogs must exist, be children of the editor and return paths.

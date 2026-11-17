@@ -37,7 +37,7 @@ def handler(_mode, _ctx, message) -> None:
 
 def main() -> int:
     qInstallMessageHandler(handler)
-    app, engine, _bridge = create([sys.argv[0]])
+    app, engine, bridge = create([sys.argv[0]])
     if not engine.rootObjects():
         print("bootcheck: no root object")
         return 1
@@ -94,6 +94,18 @@ def main() -> int:
 
     def close_find() -> None:
         call("closeFind")
+        QTimer.singleShot(150, export_pdf)
+
+    def export_pdf() -> None:
+        # The PDF path is the same one the Export dialog uses, minus the dialog.
+        active = str(root.property("activeId") or "")
+        target = os.path.join(_SANDBOX, "bootcheck.pdf")
+        result = bridge.writePdf(active, target)
+        if not result.get("ok") or not os.path.exists(target):
+            problems.append(f"bootcheck: writePdf failed: {result}")
+        git = bridge.gitStatus(os.path.abspath(__file__))
+        if not isinstance(git, dict) or "lines" not in git:
+            problems.append(f"bootcheck: gitStatus returned {git!r}")
         QTimer.singleShot(150, right_click)
 
     def right_click() -> None:

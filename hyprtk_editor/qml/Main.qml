@@ -781,6 +781,31 @@ ApplicationWindow {
         Bridge.updateSettings({ font_size: Math.max(9, Math.min(32, size)) });
     }
 
+    // -- printing --------------------------------------------------------
+    function exportPdf() {
+        if (!activeId)
+            return;
+        var result = Bridge.exportPdf(activeId);
+        if (result.cancelled)
+            return;
+        if (result.ok)
+            toast.show("PDF written to " + result.path, "ok");
+        else
+            toast.show(result.error || "Export failed", "error");
+    }
+
+    function printDocument() {
+        if (!activeId)
+            return;
+        var result = Bridge.printDoc(activeId);
+        if (result.cancelled)
+            return;
+        if (result.ok)
+            toast.show("Sent " + (result.title || "document") + " to the printer", "ok");
+        else
+            toast.show(result.error || "Printing failed", "error");
+    }
+
     // -- quick open ------------------------------------------------------
     function quickOpenCandidates() {
         var doc = activeDoc();
@@ -869,6 +894,7 @@ ApplicationWindow {
         add("Toggle word wrap", "Alt+Z", function () { Bridge.updateSettings({ wrap: !cfg.wrap }); });
         add("Toggle line numbers", "", function () { Bridge.updateSettings({ line_numbers: !cfg.line_numbers }); });
         add("Toggle minimap", "", function () { Bridge.updateSettings({ minimap: !cfg.minimap }); });
+        add("Toggle git gutter", "", function () { Bridge.updateSettings({ git_gutter: !cfg.git_gutter }); });
         add("Toggle current-line highlight", "", function () { Bridge.updateSettings({ highlight_current_line: !cfg.highlight_current_line }); });
         add("Toggle bracket matching", "", function () { Bridge.updateSettings({ match_brackets: !cfg.match_brackets }); });
         add("Toggle syntax highlighting", "", function () { Bridge.updateSettings({ syntax: !cfg.syntax }); });
@@ -905,6 +931,8 @@ ApplicationWindow {
             if (doc && doc.path)
                 Bridge.copyToClipboard(doc.path);
         });
+        add("Export as PDF…", "", function () { win.exportPdf(); });
+        add("Print…", "", function () { win.printDocument(); });
         add("Preferences…", "Ctrl+,", function () { settingsDialog.open(); });
         add("About hyprtk-editor", "", function () {
             toast.show("hyprtk-editor " + Bridge.version + " — Qt " + Qt.application.version, "info");

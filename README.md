@@ -7,7 +7,7 @@ front, Python behind it. Opens like a notepad, grows into the parts of Kate
 that earn their keep: real tabs, a session, regex search, 600+ syntaxes, a
 command palette, line operations and a minimap.
 
-**Current version: 0.2.0** — see [CHANGELOG.md](CHANGELOG.md).
+**Current version: 0.2.1** — see [CHANGELOG.md](CHANGELOG.md).
 
 ![hyprtk-editor](hyprtk_editor/assets/hyprtk-editor.svg)
 
@@ -20,6 +20,8 @@ command palette, line operations and a minimap.
 - Atomic saves that keep the file mode; a save refuses to overwrite a file that changed on disk
 - External-change detection and *Reload from disk*
 - Binary files and very large files open read-only with a banner
+- **Git diff gutter** — added, modified and deleted lines against HEAD, in a
+  stripe that survives wrap mode and the line-number toggle
 
 **Editing**
 - Pygments highlighting for 600+ languages, with a language picker in the palette
@@ -27,6 +29,9 @@ command palette, line operations and a minimap.
 - Duplicate / move / delete line, comment toggle, sort (asc/desc/unique), trim trailing whitespace, join lines, case changes, indent/outdent, tabs ↔ spaces
 - Incremental search with case, whole-word and regex modes, match highlighting, previous/next, replace one/all — **per tab**, so each file keeps its own query and replace text
 - Quick open (`Ctrl+P`) over open documents, recent files and the current folder, ranked by a fuzzy subsequence score
+- **Print and export to PDF** (`Ctrl+K → Print…` / `Export as PDF…`): a separate
+  light-theme document, so a dark editor prints as black text on paper with a
+  light syntax palette
 
 **Interface**
 - Command palette (`Ctrl+K`) over every action — including language, encoding and line endings, so no menu hunting
@@ -83,8 +88,10 @@ Then `hyprtk-edit [FILE ...]`, or launch **Text Editor** from the app menu.
 hyprtk-editor/
 ├── hyprtk_editor/
 │   ├── app.py          QApplication + QML engine + Bridge
-│   ├── bridge.py       the single QML-facing facade (slots, signals, palette)
+│   ├── bridge.py       the single QML-facing facade (slots, signals, palette, tokenising worker)
 │   ├── fileio.py       encoding/BOM/EOL detection, atomic writes
+│   ├── gitdiff.py      git diff --unified=0 → gutter marks
+│   ├── printdoc.py     light-theme print/PDF document
 │   ├── highlight.py    Pygments spans + the QSyntaxHighlighter
 │   ├── languages.py    detection, curated language list, comment tokens
 │   ├── palette.py      bar/pywal palette → colours + syntax roles
@@ -95,7 +102,7 @@ hyprtk-editor/
 │   └── qml/            Main, EditorPane, FindBar, QuickOpen, CommandPalette…
 ├── bin/hyprtk-edit     launcher (sets the Qt platform theme)
 ├── install.sh
-└── tests/              109 unit tests over the pure layers
+└── tests/              147 unit tests over the pure layers
 ```
 
 ### The highlighting constraint (why it is viewport-scoped)
@@ -131,7 +138,13 @@ produce black.
 - QML's text engine lays out the whole document. Above ~400 KB highlighting and
   the minimap switch off; above 2 MB the file opens read-only.
 - The line-number gutter is hidden while word wrap is on — wrapped visual lines
-  do not correspond to logical line numbers.
+  do not correspond to logical line numbers. The git stripe is a separate
+  column for exactly that reason.
+- The git gutter marks the working tree against HEAD. A file outside a
+  repository, or in a repository git cannot answer for within two seconds, just
+  has no marks.
+- Printed output has no syntax-error squiggles or search highlights: the print
+  document is rebuilt from the plain text, not copied from the live one.
 - Highlighting colours only what is on screen; off-screen text is coloured as it
   scrolls in. This is deliberate, and invisible in normal use.
 - No LSP, multi-cursor, split view or markdown preview yet — see

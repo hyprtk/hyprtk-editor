@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.1 — 2026-11-17
+
+Wave 2 of the v0.2 plan.
+
+- **Tokenising moved off the GUI thread.** Pygments runs on a one-worker pool
+  for anything over ~24 KB (it costs ~4 ms per KB of code), and the result is
+  applied through a queued signal, so `QSyntaxHighlighter` is still only ever
+  touched on the GUI thread. Every request carries a generation number: a slow
+  result that a newer edit superseded — or that belongs to a tab closed while
+  it ran — is dropped instead of overwriting the current spans.
+- **Git diff gutter.** A 6 px stripe left of the line numbers marks added
+  (green), modified (amber) and deleted (red) lines from `git diff HEAD
+  --unified=0`, cached by `(mtime, size)` and refreshed on open, save and
+  reload. It is a separate column rather than part of the line-number gutter, so
+  the marks survive word wrap and the line-number toggle. Untracked files are
+  marked as added; outside a repository — or when git does not answer within
+  two seconds — the stripe is simply empty. Toggle in Preferences or from the
+  palette.
+- **Print and export to PDF.** The live document carries the dark palette in its
+  char formats, so printing it directly would put pale text on a white page.
+  `printdoc.py` rebuilds a light-theme document from the plain text, re-applies
+  the Pygments spans in print colours, and paginates it (A4, 15 mm margins,
+  file name and date at the top, page numbers from the device). `QPrintDialog`
+  is transient-parented and dressed in the editor palette like the file
+  dialogs; colour output is a preference.
+- Fix: `QTextDocument.print_` adds its own margin when the document has no page
+  size (ink landed 22 mm in regardless of the device margins). The document is
+  laid out at the device body size first, which also makes pagination correct.
+- Boot check now writes a PDF through the same code path as the export dialog
+  and calls the git status slot, so a broken print or gutter path fails the
+  gate.
+
 ## 0.2.0 — 2026-11-17
 
 First wave of the v0.2 plan (see PLAN.md): the parts that make it feel finished.

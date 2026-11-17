@@ -33,7 +33,7 @@ what is deliberately deferred, and how the app joins the suite.
 
 ## v0.2 — make it feel finished
 
-Wave 1 shipped as **0.2.0** (2026-11-17). Planned 2026-11-17. Four waves, each a release; the order is by dependency and
+Waves 1–2 shipped as **0.2.0** and **0.2.1** (2026-11-17). Planned 2026-11-17. Four waves, each a release; the order is by dependency and
 risk, not by glamour. Everything below was probed against Qt 6.12 before being
 written down.
 
@@ -62,19 +62,19 @@ written down.
 
 ### Wave 2 — performance and precision (0.2.1)
 
-- [ ] **Off-thread tokenising.** `Bridge.recompute` submits
+- [x] **Off-thread tokenising.** `Bridge.recompute` submits
       `(key, text, alias, generation)` to a single-worker `ThreadPoolExecutor`
       and applies the spans on a `Signal` (auto-queued, so `QSyntaxHighlighter`
       is only touched on the GUI thread). Stale generations are dropped; files
       under ~40 KB stay synchronous so small buffers never flicker.
-- [ ] **Git diff gutter.** New `gitdiff.py`: `rev-parse --show-toplevel`,
+- [x] **Git diff gutter.** New `gitdiff.py`: `rev-parse --show-toplevel`,
       `diff -U0 --no-color -- <rel>`, parse `@@` hunks into new-side
       `{line: add|mod|del}`, cached on `(path, mtime)` and recomputed on
       open/save/activate (never per keystroke — the working tree only changes
       on save). Painted as a 6 px stripe **left of** the gutter so it survives
       `wrap` mode and the `line_numbers` toggle, plus bars in the minimap
       canvas. Parser tested against fixed diff text.
-- [ ] **Print / export PDF.** `printdoc.py` builds a **fresh** light-theme
+- [x] **Print / export PDF.** `printdoc.py` builds a **fresh** light-theme
       `QTextDocument` from the buffer (the live one carries dark-palette
       formats): mono font, page margins, file/page header, optional syntax
       colour by re-tokenising with the existing `spans()`. `exportPdf(docId,
@@ -184,9 +184,9 @@ When it is ready to ship with the suite:
       15 pre-existing). Suite v1.6.0 tagged on dotfiles, live fast-forwarded.
 - [x] Reinstall: editor 0.1.1, bar 0.43.7, default handlers set, bar restarted.
 
-Release state: **hyprtk-editor 0.2.0** (v0.2 wave 1: per-tab find, tab
-reorder, quick open), hyprtk-fm 1.8.7, bar-qt 0.43.8, suite v1.7.4
-(dotfiles `eccc5edbc`).
+Release state: **hyprtk-editor 0.2.1** (v0.2 waves 1–2: per-tab find, quick
+open, tab reorder, off-thread tokenising, git gutter, print/PDF), hyprtk-fm
+1.8.7, bar-qt 0.43.8, suite v1.7.4 (dotfiles `eccc5edbc`).
 
 ## Known constraints to keep in mind
 
