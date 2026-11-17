@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.4 — 2026-11-17
+
+- The file dialogs (Open, Save, Open Folder) no longer come up as the native GTK
+  chooser. With `QT_QPA_PLATFORMTHEME=gtk3` — what the launcher sets — the
+  platform theme hands out a GTK dialog, which ignores every colour this app
+  could give it; the dialogs now insist on the Qt one and wear the editor
+  palette instead: pywal background, surfaces, selection, headers, scrollbars
+  and an accent-coloured primary button, in the editor font and size.
+- The icon theme's blue floppy and red cross are stripped from the Save/Cancel
+  buttons, so the dialogs read as part of the editor.
+- Dialogs open at a workable size (900×560, capped to 70% of the screen) with a
+  sidebar wide enough to read, and the long name filter no longer stretches the
+  window to ~1570 px.
+- The dressing survives `QFileDialog` rebuilding its buttons when the accept
+  mode changes or the dialog is shown.
+
 ## 0.1.3 — 2026-11-17
 
 - Fix: Ctrl+O, the Open file button, Save As and Open Folder opened nothing.

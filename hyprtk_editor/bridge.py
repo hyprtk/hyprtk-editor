@@ -19,7 +19,7 @@ from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtQuick import QQuickTextDocument
 from PySide6.QtWidgets import QFileDialog
 
-from . import __version__, fileio, languages, palette, search, textops
+from . import __version__, dialogs, fileio, languages, palette, search, textops
 from .highlight import PAGE_BLOCKS, Highlighter, spans
 from .session import Drafts, Session
 from .settings import MONO_FAMILIES, Settings
@@ -156,7 +156,14 @@ class Bridge(QObject):
         ``winId()`` has to run first, because the platform window only exists
         once the widget owns one.
         """
-        dialog = QFileDialog(None, title, start, OPEN_FILTER)
+        dialog = dialogs.ThemedFileDialog(
+            self._palette,
+            self.settings.resolved_font(),
+            int(self.settings.get("font_size") or 13),
+        )
+        dialog.setWindowTitle(title)
+        dialog.setDirectory(start)
+        dialog.setNameFilter(OPEN_FILTER)
         dialog.setFileMode(mode)
         window = QGuiApplication.focusWindow()
         if window is not None:

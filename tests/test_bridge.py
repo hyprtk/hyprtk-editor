@@ -12,7 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from unittest import mock  # noqa: E402
 
-from PySide6.QtGui import QGuiApplication, QWindow  # noqa: E402
+from PySide6.QtGui import QGuiApplication, QPalette, QWindow  # noqa: E402
 from PySide6.QtWidgets import QApplication, QFileDialog  # noqa: E402
 
 from hyprtk_editor.bridge import Bridge  # noqa: E402
@@ -168,6 +168,18 @@ class FileDialogTest(unittest.TestCase):
             dialog.deleteLater()
             window.close()
             window.deleteLater()
+
+    def test_dialogs_use_the_editor_palette(self) -> None:
+        dialog = self.bridge._file_dialog("Open File", self.tmp.name,
+                                          QFileDialog.ExistingFiles)
+        try:
+            background = self.bridge._palette["background"]
+            self.assertTrue(background.startswith("#"))
+            self.assertIn(background, dialog.styleSheet())
+            self.assertEqual(dialog.palette().color(QPalette.Window).name(), background)
+        finally:
+            dialog.close()
+            dialog.deleteLater()
 
     def test_open_dialog_returns_selected_files(self) -> None:
         chosen = self.write("picked.txt")
