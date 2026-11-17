@@ -11,6 +11,13 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
+# Keep the gate hermetic: the app writes a session, drafts and settings under the
+# XDG dirs, and a boot check that takes longer than the 900 ms session debounce
+# would otherwise leave its temp documents in the developer's own session.
+_SANDBOX = tempfile.mkdtemp(prefix="hyprtk-boot-")
+for _var in ("XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"):
+    os.environ[_var] = os.path.join(_SANDBOX, _var.split("_")[1].lower())
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -40,19 +47,60 @@ def main() -> int:
         print(f"bootcheck: root objects={len(engine.rootObjects())}, warnings={len(problems)}")
         app.exit(1 if problems else 0)
 
-    def open_and_right_click() -> None:
-        # An editor pane (and its context menu) only exists once a document is
-        # open, so the boot check opens one and right-clicks it.
+    def call(name: str, *args) -> None:
+        """Invoke a QML function and fail the gate if it is missing.
+
+        A renamed or deleted QML function used to make this check pass
+        vacuously, because invokeMethod's return value was ignored.
+        """
+        if not QMetaObject.invokeMethod(root, name, *args):
+            problems.append(f"bootcheck: {name}() is not invokable")
+
+    def open_first() -> None:
+        # An editor pane only exists once a document is open.
         path = Path(tempfile.gettempdir()) / "hyprtk-bootcheck.txt"
         path.write_text("one\ntwo\nthree\n", encoding="utf-8")
-        QMetaObject.invokeMethod(root, "openPath", Q_ARG("QVariant", str(path)))
-        QTimer.singleShot(500, right_click)
+        call("openPath", Q_ARG("QVariant", str(path)))
+        QTimer.singleShot(300, new_document)
+
+    def new_document() -> None:
+        # Two tabs, so the strip, the drag helpers and per-tab find all run.
+        call("newDocument")
+        QTimer.singleShot(150, open_find)
+
+    def open_find() -> None:
+        call("openFind", Q_ARG("QVariant", False))
+        QTimer.singleShot(200, cycle)
+
+    def cycle() -> None:
+        # Switching tabs must load the other document's find record, not this
+        # one's query.
+        call("cycleTab", Q_ARG("QVariant", 1))
+        QTimer.singleShot(150, reorder)
+
+    def reorder() -> None:
+        active = str(root.property("activeId") or "")
+        if active:
+            call("moveDocument", Q_ARG("QVariant", active), Q_ARG("QVariant", 0))
+        QTimer.singleShot(150, quick_open)
+
+    def quick_open() -> None:
+        call("openQuickOpen")
+        QTimer.singleShot(250, quick_close)
+
+    def quick_close() -> None:
+        call("toggleQuickOpen")
+        QTimer.singleShot(150, close_find)
+
+    def close_find() -> None:
+        call("closeFind")
+        QTimer.singleShot(150, right_click)
 
     def right_click() -> None:
         QTest.mouseClick(root, Qt.RightButton, Qt.NoModifier, QPoint(160, 70))
-        QTimer.singleShot(500, finish)
+        QTimer.singleShot(400, finish)
 
-    QTimer.singleShot(400, open_and_right_click)
+    QTimer.singleShot(400, open_first)
     return app.exec()
 
 

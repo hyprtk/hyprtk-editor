@@ -7,14 +7,14 @@ front, Python behind it. Opens like a notepad, grows into the parts of Kate
 that earn their keep: real tabs, a session, regex search, 600+ syntaxes, a
 command palette, line operations and a minimap.
 
-**Current version: 0.1.5** — see [CHANGELOG.md](CHANGELOG.md).
+**Current version: 0.2.0** — see [CHANGELOG.md](CHANGELOG.md).
 
 ![hyprtk-editor](hyprtk_editor/assets/hyprtk-editor.svg)
 
 ## Features
 
 **Documents**
-- Tabs with per-tab undo history and scroll position, dirty markers and a close guard
+- Tabs with per-tab undo history and scroll position, dirty markers and a close guard; drag to reorder, middle-click to close, wheel to cycle
 - Session restore (files, caret, scroll, active tab) and autosaved crash-recovery drafts — an unsaved buffer survives a power cut
 - Encoding (UTF-8 / UTF-16 LE/BE / ISO-8859-1 / Windows-1252), BOM and LF/CRLF/CR detection, preserved on save
 - Atomic saves that keep the file mode; a save refuses to overwrite a file that changed on disk
@@ -25,7 +25,8 @@ command palette, line operations and a minimap.
 - Pygments highlighting for 600+ languages, with a language picker in the palette
 - Current-line highlight, bracket matching, line numbers, minimap, word-wrap toggle, zoom
 - Duplicate / move / delete line, comment toggle, sort (asc/desc/unique), trim trailing whitespace, join lines, case changes, indent/outdent, tabs ↔ spaces
-- Incremental search with case, whole-word and regex modes, match highlighting, previous/next, replace one/all
+- Incremental search with case, whole-word and regex modes, match highlighting, previous/next, replace one/all — **per tab**, so each file keeps its own query and replace text
+- Quick open (`Ctrl+P`) over open documents, recent files and the current folder, ranked by a fuzzy subsequence score
 
 **Interface**
 - Command palette (`Ctrl+K`) over every action — including language, encoding and line endings, so no menu hunting
@@ -66,6 +67,7 @@ Then `hyprtk-edit [FILE ...]`, or launch **Text Editor** from the app menu.
 | Find / replace | `Ctrl+F` / `Ctrl+H` |
 | Find next / previous | `F3` / `Shift+F3` |
 | Go to line | `Ctrl+G` |
+| Quick open | `Ctrl+P` |
 | Command palette | `Ctrl+K` or `Ctrl+Shift+P` |
 | Preferences | `Ctrl+,` |
 | Duplicate / delete line | `Ctrl+Shift+D` / `Ctrl+Shift+K` |
@@ -86,14 +88,14 @@ hyprtk-editor/
 │   ├── highlight.py    Pygments spans + the QSyntaxHighlighter
 │   ├── languages.py    detection, curated language list, comment tokens
 │   ├── palette.py      bar/pywal palette → colours + syntax roles
-│   ├── search.py       pure find/replace
+│   ├── search.py       pure find/replace + fuzzy ranking
 │   ├── textops.py      pure line/selection operations
 │   ├── settings.py     JSON preferences
 │   ├── session.py      session + draft persistence
-│   └── qml/            Main, EditorPane, FindBar, CommandPalette, Settings…
+│   └── qml/            Main, EditorPane, FindBar, QuickOpen, CommandPalette…
 ├── bin/hyprtk-edit     launcher (sets the Qt platform theme)
 ├── install.sh
-└── tests/              73 unit tests over the pure layers
+└── tests/              109 unit tests over the pure layers
 ```
 
 ### The highlighting constraint (why it is viewport-scoped)

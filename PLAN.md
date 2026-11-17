@@ -33,25 +33,113 @@ what is deliberately deferred, and how the app joins the suite.
 
 ## v0.2 — make it feel finished
 
-- [ ] **Per-tab find bar** — the query currently belongs to the window; Mousepad's
-      per-tab entry is better once several files are open.
-- [ ] **Quick open (`Ctrl+P`)** over recent files and the current folder.
-- [ ] **Split view** (horizontal/vertical), sharing the tab model.
-- [ ] **Markdown preview** side pane. Needs a renderer; prefer Qt's
-      `QTextDocument.setMarkdown()` over a Python dependency.
-- [ ] **Git diff gutter** — `git diff --unified=0` for the open file, painted in
-      the margin.
-- [ ] **Multi-cursor / column selection** — requires a custom selection layer;
-      scope it before starting.
-- [ ] **Tab drag-reorder** and middle-click close.
-- [ ] **Restore window position** (size is already saved).
-- [ ] **Print / export PDF** via `QTextDocument`.
-- [ ] **Spell check** (Hunspell) as an optional, non-intrusive underline.
-- [ ] **Whitespace/indent guides** — needs a margin painter or a QML overlay;
-      do it with the document layout, not per-character formats.
-- [ ] Move tokenising to a worker thread so files near the 400 KB ceiling do not
-      pause the UI.
-- [ ] A real icon set for the chrome (currently Nerd Font glyphs + text).
+Wave 1 shipped as **0.2.0** (2026-11-17). Planned 2026-11-17. Four waves, each a release; the order is by dependency and
+risk, not by glamour. Everything below was probed against Qt 6.12 before being
+written down.
+
+### Wave 1 — feel (0.2.0)
+
+- [x] **Per-tab find bar.** The query belongs to the window today
+      (`win.matches`/`win.matchIndex`, one `findBar`). Store per document:
+      `find = {docId: {query, replacement, case, word, regex, replaceMode,
+      visible, matchIndex, matches}}`; `openFind/runSearch/applyMatchHighlight/
+      selectMatch/closeFind` operate on the active record, `activateTab` stores
+      the bar into the outgoing record and re-applies the incoming one, and the
+      per-document ranges keep painting through `Bridge.setSearch`. No Python
+      change.
+- [x] **Tab drag-reorder, middle-click close, wheel to cycle.** Non-live drag:
+      track `dragTabId`/`dropIndex` from pointer x over the strip's children,
+      draw a 2 px accent insertion line, commit with `moveDocument()` on
+      release. Never reorder during the drag — reordering a `Repeater` model
+      destroys the delegate that owns the mouse grab.
+- [x] **Quick open (`Ctrl+P`).** Extract the card chrome out of
+      `CommandPalette.qml` into `components/PickerCard.qml` (field, list,
+      footer, key handling) so both pickers look identical. Bridge gains
+      `quickOpen(current_path)` (recents then the current folder, deduped) and
+      `rankFiles(items, query)`. Ranking is `search.fuzzy_score()` — a
+      subsequence score with contiguity and word-start bonuses — so it is
+      unit-testable and reusable by the command palette. Empty query = recents.
+
+### Wave 2 — performance and precision (0.2.1)
+
+- [ ] **Off-thread tokenising.** `Bridge.recompute` submits
+      `(key, text, alias, generation)` to a single-worker `ThreadPoolExecutor`
+      and applies the spans on a `Signal` (auto-queued, so `QSyntaxHighlighter`
+      is only touched on the GUI thread). Stale generations are dropped; files
+      under ~40 KB stay synchronous so small buffers never flicker.
+- [ ] **Git diff gutter.** New `gitdiff.py`: `rev-parse --show-toplevel`,
+      `diff -U0 --no-color -- <rel>`, parse `@@` hunks into new-side
+      `{line: add|mod|del}`, cached on `(path, mtime)` and recomputed on
+      open/save/activate (never per keystroke — the working tree only changes
+      on save). Painted as a 6 px stripe **left of** the gutter so it survives
+      `wrap` mode and the `line_numbers` toggle, plus bars in the minimap
+      canvas. Parser tested against fixed diff text.
+- [ ] **Print / export PDF.** `printdoc.py` builds a **fresh** light-theme
+      `QTextDocument` from the buffer (the live one carries dark-palette
+      formats): mono font, page margins, file/page header, optional syntax
+      colour by re-tokenising with the existing `spans()`. `exportPdf(docId,
+      path)` writes through `QPdfWriter`; `printDoc(docId)` opens a
+      `QPrintDialog`, transient-parented exactly like the file dialogs.
+
+### Wave 3 — the big one (0.2.2)
+
+- [ ] **Split view**, and the refactor it forces. `Bridge._editors` and the QML
+      `panes` map are keyed by **document** id, so one document cannot have two
+      views. Introduce `paneId`: `attach(area, paneId, docId)` and every
+      `refresh/recompute/setSearch/setBrackets/setCurrentLine/setLanguage/
+      setPath/detach` takes the pane key. **Drafts and sessions stay
+      document-keyed** — a draft belongs to a document, not a view. Then a
+      two-pane layout with a dragged handle, `focusPane` tracking, `Ctrl+\`
+      toggle, `Ctrl+1/2` to focus, and the rule that a document lives in one
+      pane (no text mirroring, so undo stays sound). Split ratio and pane
+      assignment persist in the session.
+- [ ] **Markdown preview** in the secondary pane — nearly free once 3 lands:
+      `Bridge.markdownHtml(text)` runs `QTextDocument.setMarkdown()` then
+      `toHtml()` with palette CSS injected, rendered by a read-only
+      `TextEdit` (`TextEdit.RichText`). Going through Python rather than QML's
+      `TextEdit.MarkdownText` guarantees heading/code/link colours against the
+      dark palette instead of trusting Qt's default black. `onLinkActivated` →
+      `Qt.openUrlExternally`. No images in v1 (needs a resource loader).
+
+### Wave 4 — polish (as it fits)
+
+- [ ] **Spell check**, runtime-optional: no `hunspell` binary or dictionary is
+      installed on this box (`enchant-2` has no backends, no `python-enchant`),
+      so detect `hunspell` + dictionary at startup and hide the setting when
+      absent. `spell.py` speaks the `hunspell -a` line protocol through one
+      persistent subprocess; paint `WaveUnderline` via a `Highlighter` word set
+      (visible blocks only, 500 ms debounce, cached by text hash). Only for
+      `text`/`markdown` aliases, skipping words with digits or underscores.
+      Adding `hunspell-en_US` to all six families + the ISO is a separate
+      decision that costs a full T1/T2 gate.
+- [ ] **Whitespace / indent guides.** A `Canvas` between the pane's base
+      rectangle and the `ScrollView` (the TextArea's background is already
+      `null`, so it shows through): 1 px guides at each indent stop for the
+      visible range, offset by `-contentY`, using the `lineHeight`/`charWidth`
+      the pane already computes. Whitespace dots ride the same canvas behind a
+      toggle, capped to the visible range.
+- [ ] **Restore maximized state** and document that a fixed window position is
+      a Hyprland window rule, not an app setting — Wayland ignores
+      `ApplicationWindow.x/y`; only the size is saved today.
+- [ ] **Toolbar icons.** Nerd Font glyphs are the suite convention (the bar
+      uses the same font), so keep `Glyph.qml` and only replace the three text
+      buttons in the tab strip (Save / Find / Commands) with glyph + tooltip.
+
+### Cut from v0.2
+
+- [ ] ~~Multi-cursor / column selection.~~ `QQuickTextEdit` exposes one cursor
+      and cannot be painted inside; the only shadow (painting N ranges through
+      the `Highlighter`) gives invisible carets, and multi-range edits would
+      have to fake undo grouping — the one place a bug corrupts documents. It
+      needs a custom text engine, so it moves next to the v0.3 work.
+
+### Release discipline for each wave
+
+`make qa` (unit tests, compileall, qmllint, shell syntax, headless bootcheck,
+CLI version, installer round-trip — `scripts/qa.sh` hardcodes the version
+string, so bump it with the release), extend `bootcheck.py` with the wave's new
+interaction, bump `CHANGELOG`/`README`, tag the standalone repo, vendor
+byte-identically into `hyprtk-merged/installer/hyprtk-editor/`, then `push-all`.
 
 ## v0.3 — code-aware (only after v0.2 is stable)
 
@@ -96,8 +184,9 @@ When it is ready to ship with the suite:
       15 pre-existing). Suite v1.6.0 tagged on dotfiles, live fast-forwarded.
 - [x] Reinstall: editor 0.1.1, bar 0.43.7, default handlers set, bar restarted.
 
-Release state: **hyprtk-editor 0.1.2**, hyprtk-fm 1.8.7, bar-qt
-0.43.8, suite v1.7.0 (dotfiles `2b3dc5605`).
+Release state: **hyprtk-editor 0.2.0** (v0.2 wave 1: per-tab find, tab
+reorder, quick open), hyprtk-fm 1.8.7, bar-qt 0.43.8, suite v1.7.4
+(dotfiles `eccc5edbc`).
 
 ## Known constraints to keep in mind
 

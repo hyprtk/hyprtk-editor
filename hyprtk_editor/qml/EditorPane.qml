@@ -320,16 +320,25 @@ Item {
                 if (!rows || rows.length === 0)
                     return;
                 var usable = height - 8;
-                var rowHeight = Math.max(1, usable / rows.length);
+                // Both dimensions are clamped: with a handful of lines the
+                // "one row per line" scale would otherwise paint a few
+                // full-height bars, and the viewport box would overflow the
+                // canvas (visible as a solid grey minimap on a new file).
+                var rowHeight = Math.min(3, Math.max(1, usable / rows.length));
                 ctx.fillStyle = Util.css(pane.th.muted, 0.42);
                 for (var i = 0; i < rows.length; i++) {
                     var w = Math.max(1, Math.min(width - 8, (rows[i] / pane.minimapMax) * (width - 8)));
                     ctx.fillRect(4, 4 + i * rowHeight, w, Math.max(1, rowHeight - 0.7));
                 }
                 var total = Math.max(1, textArea.lineCount) * Math.max(1, pane.lineHeight);
+                // A document that fits on screen has no scroll position worth
+                // showing; painting the box anyway turned the minimap into a
+                // solid slab on a new file.
+                if (total <= view.height + 1)
+                    return;
                 var top = view.contentItem ? view.contentItem.contentY : 0;
                 var boxY = 4 + (top / total) * usable;
-                var boxH = Math.max(10, (view.height / total) * usable);
+                var boxH = Math.min(usable, Math.max(10, (view.height / total) * usable));
                 ctx.fillStyle = Util.css(pane.th.accent, 0.14);
                 ctx.fillRect(0, boxY, width, boxH);
                 ctx.strokeStyle = Util.css(pane.th.accent, 0.35);

@@ -1,13 +1,36 @@
 # Changelog
 
-## Unreleased — documentation
+## 0.2.0 — 2026-11-17
 
-- The README and this changelog now describe the project as one of the seven
-  repositories that make up the hyprtk suite, with links to the rest of them and
-  a note on how this one lands in the desktop. No code change.
+First wave of the v0.2 plan (see PLAN.md): the parts that make it feel finished.
+
+- **Per-tab search.** Each document keeps its own query, replace text, match
+  mode and match list, so `Ctrl+F` no longer drags a query from one file into
+  the next. Switching tabs restores that file's search (and keeps the caret
+  where it was); closing a tab drops its record.
+- **Quick open (`Ctrl+P`).** One picker over the documents already open, the
+  recent files and the current folder, ranked by a fuzzy subsequence score that
+  prefers adjacent matches, word starts and shorter names (`main.py` beats
+  `main_window_test.py`). The score lives in `search.fuzzy_score` / `search.rank`
+  and is unit-tested without a display.
+- **Tab strip.** Drag a tab to reorder (the model is only reordered on release,
+  so the drag keeps its grab; a 2 px accent line marks the drop), middle-click
+  closes a tab, and the wheel over the strip cycles tabs.
+- The command palette and the quick-open picker now share one card
+  (`components/PickerCard.qml`), so they cannot drift apart, and the shared
+  component adds PageUp/PageDown paging and a "no matches" state.
+- Fix: the minimap painted a solid slab on a short file — one bar per line
+  scaled to the whole height and the viewport box was unclamped. Bars are
+  capped at 3 px and the box is only drawn when the document is taller than the
+  view.
+- The headless boot check now drives the new paths (two tabs, find, tab switch,
+  reorder, quick open) and fails if a QML function it calls is missing. It also
+  runs against a throwaway XDG sandbox, so the gate no longer leaves its temp
+  documents in the developer's real session.
+- Documentation: the "part of the hyprtk suite" banner, the seven-repository
+  table and the changelog footer that landed with the suite docs pass.
 
 ## 0.1.5 — 2026-11-17
-
 - The right-click menu over the text (and over the find, replace, prompt and
   command-palette fields) now uses the editor palette. Qt Quick Controls hands
   out a `TextEditingContextMenu` painted from the control palette, so it came up

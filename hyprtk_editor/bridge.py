@@ -437,6 +437,57 @@ class Bridge(QObject):
         new_text, count = search.replace_all(text, self._query(needle, case, word, regex), replacement)
         return {"text": new_text, "count": count}
 
+    # -- quick open ------------------------------------------------------
+    @Slot(str, result="QVariantList")
+    def quickOpen(self, current_path: str = ""):
+        """Candidates for Ctrl+P: recent files, then the current document's folder.
+
+        Entries carry ``path``/``name``/``folder``/``source``; the QML side adds
+        the documents that are already open (an unsaved buffer has no path, so it
+        can only come from there) and asks :meth:`rankFiles` to order the mix.
+        """
+        seen: set[str] = set()
+        out: list[dict] = []
+
+        def push(path: str, source: str) -> None:
+            path = str(path or "")
+            if not path or path in seen or not os.path.isfile(path):
+                return
+            seen.add(path)
+            out.append({
+                "path": path,
+                "name": fileio.display_name(path),
+                "folder": os.path.dirname(path),
+                "source": source,
+            })
+
+        for path in self.settings.get("recent") or []:
+            push(str(path), "recent")
+
+        folder = os.path.dirname(str(current_path or "")) or self._start_dir()
+        if folder and os.path.isdir(folder):
+            try:
+                entries = sorted(os.scandir(folder), key=lambda item: item.name.lower())
+            except OSError:
+                entries = []
+            for entry in entries:
+                if entry.name.startswith("."):
+                    continue
+                try:
+                    if not entry.is_file():
+                        continue
+                except OSError:
+                    continue
+                push(entry.path, "folder")
+                if len(out) >= 400:
+                    break
+        return out[:400]
+
+    @Slot("QVariantList", str, result="QVariantList")
+    def rankFiles(self, items, query: str = ""):
+        return search.rank(items, str(query or ""), limit=200)
+
+
     # -- editing helpers -------------------------------------------------
     @Slot(str, int, int, str, str, int, bool, result="QVariantMap")
     def lineOp(self, text: str, sel_start: int, sel_end: int, op: str, comment: str, width: int, spaces: bool):
