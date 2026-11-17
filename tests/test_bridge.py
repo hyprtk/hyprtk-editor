@@ -10,7 +10,10 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from unittest import mock  # noqa: E402
+
+from PySide6.QtGui import QGuiApplication, QWindow  # noqa: E402
+from PySide6.QtWidgets import QApplication, QFileDialog  # noqa: E402
 
 from hyprtk_editor.bridge import Bridge  # noqa: E402
 
@@ -121,6 +124,75 @@ class BridgeTest(unittest.TestCase):
         palette = self.bridge.palette
         self.assertTrue(palette["background"].isValid())
         self.assertTrue(palette["syntax"]["comment"].isValid())
+
+
+class FileDialogTest(unittest.TestCase):
+    """The dialogs must exist, be children of the editor and return paths.
+
+    Regression: they used ``QGuiApplication.activeWindow()``, which does not
+    exist, so Ctrl+O, Save As and Open Folder all died with an AttributeError
+    before a dialog ever appeared.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        os.environ["XDG_CONFIG_HOME"] = str(root / "config")
+        os.environ["XDG_CACHE_HOME"] = str(root / "cache")
+        os.environ["XDG_STATE_HOME"] = str(root / "state")
+        self.bridge = Bridge()
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_dialog_is_transient_child_of_editor_window(self) -> None:
+        window = QWindow()
+        window.show()
+        self.app.processEvents()
+        focused = QGuiApplication.focusWindow()
+        if focused is None:
+            window.deleteLater()
+            self.skipTest("no focus window under this platform")
+        dialog = self.bridge._file_dialog("Open File", self.tmp.name,
+                                          QFileDialog.ExistingFiles)
+        try:
+            self.assertIsInstance(dialog, QFileDialog)
+            self.assertEqual(dialog.fileMode(), QFileDialog.ExistingFiles)
+            self.assertIs(dialog.windowHandle().transientParent(), focused)
+        finally:
+            dialog.close()
+            dialog.deleteLater()
+            window.close()
+            window.deleteLater()
+
+    def test_open_dialog_returns_selected_files(self) -> None:
+        chosen = self.write("picked.txt")
+        with mock.patch.object(QFileDialog, "exec", return_value=QFileDialog.Accepted), \
+                mock.patch.object(QFileDialog, "selectedFiles", return_value=[chosen]):
+            self.assertEqual(self.bridge.openDialog(), [chosen])
+        self.assertEqual(self.bridge.settings.get("last_open_dir"), self.tmp.name)
+
+    def test_open_dialog_cancel_returns_nothing(self) -> None:
+        with mock.patch.object(QFileDialog, "exec", return_value=QFileDialog.Rejected):
+            self.assertEqual(self.bridge.openDialog(), [])
+
+    def test_save_dialog_cancel_returns_empty_string(self) -> None:
+        with mock.patch.object(QFileDialog, "exec", return_value=QFileDialog.Rejected):
+            self.assertEqual(self.bridge.saveDialog("notes.txt"), "")
+
+    def test_folder_dialog_returns_the_chosen_folder(self) -> None:
+        with mock.patch.object(QFileDialog, "exec", return_value=QFileDialog.Accepted), \
+                mock.patch.object(QFileDialog, "selectedFiles", return_value=[self.tmp.name]):
+            self.assertEqual(self.bridge.folderDialog(self.tmp.name), self.tmp.name)
+
+    def write(self, name: str, text: str = "x\n") -> str:
+        path = Path(self.tmp.name) / name
+        path.write_text(text, encoding="utf-8")
+        return str(path)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 — 2026-11-17
+
+- Fix: Ctrl+O, the Open file button, Save As and Open Folder opened nothing.
+  The dialogs asked `QGuiApplication` for an `activeWindow` it does not have,
+  so they died with an AttributeError before ever appearing. They are now built
+  as `QFileDialog` instances marked transient for the editor window, so they
+  float over it (Hyprland was tiling a parentless dialog beside the editor) and
+  take keyboard focus.
+
 ## 0.1.2 — 2026-11-17
 
 - Installer: `--system` installs under `/usr/local` (share + bin + desktop
