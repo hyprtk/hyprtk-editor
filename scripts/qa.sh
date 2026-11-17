@@ -25,7 +25,7 @@ echo "== headless boot =="
 timeout 40 python3 scripts/bootcheck.py
 
 echo "== cli =="
-test "$(PYTHONPATH=. python3 -m hyprtk_editor --version)" = "hyprtk-edit 0.1.4"
+test "$(PYTHONPATH=. python3 -m hyprtk_editor --version)" = "hyprtk-edit 0.1.5"
 
 echo "== installer round-trip =="
 TMP=$(mktemp -d)
