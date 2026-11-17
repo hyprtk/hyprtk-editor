@@ -85,10 +85,10 @@ When it is ready to ship with the suite:
 - [x] Add the **Editor** quick link (quick links + arc menu) and the `Super+E`
       keybind.
 - [x] ISO: `packages.hyprtk` bakes `pyside6` + `python-pygments`;
-      `customize_airootfs.sh` installs the editor for the live user
-      (`--set-default`) and runs `set-default-apps.sh`; `hyprtk-first-run`
-      installs it for accounts on the deployed system and gates the stamp on
-      `hyprtk-edit`.
+      `customize_airootfs.sh` installs bar/fm/editor **system-wide** with
+      `--system` into `/usr/local`; `hyprtk-first-run` only seeds per-user
+      config/themes, `~/.local/bin` links, the palette and XDG defaults, and
+      gates the stamp on both the bar and `hyprtk-edit`.
 - [x] Default handler: `text/plain` and `text/markdown` via
       `set-default-apps.sh` and the installer's `--set-default`.
 - [x] `push-all` gate: T1 1340 resolvable / 26 AUR / 89 allowed / 0 unexpected,
@@ -96,8 +96,8 @@ When it is ready to ship with the suite:
       15 pre-existing). Suite v1.6.0 tagged on dotfiles, live fast-forwarded.
 - [x] Reinstall: editor 0.1.1, bar 0.43.7, default handlers set, bar restarted.
 
-Release state: **hyprtk-editor 0.1.1**, bar-qt 0.43.7, suite v1.6.1
-(dotfiles `7c6522cab`).
+Release state: **hyprtk-editor 0.1.2**, ver 0.1.2, hyprtk-fm 1.8.7, bar-qt
+0.43.8, suite v1.7.0 (dotfiles `2b3dc5605`).
 
 ## Known constraints to keep in mind
 
