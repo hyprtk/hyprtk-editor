@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import threading
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -51,6 +53,14 @@ class TokenisingTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.app = QApplication.instance() or QApplication([])
+        # Never read the developer's own config: "syntax": false there would
+        # turn every one of these into the "syntax off" branch.
+        cls._tmp = tempfile.TemporaryDirectory()
+        os.environ["XDG_CONFIG_HOME"] = str(Path(cls._tmp.name) / "config")
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
 
     def setUp(self) -> None:
         self.bridge = Bridge()

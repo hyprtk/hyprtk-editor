@@ -72,6 +72,13 @@ class StyleSheetTest(unittest.TestCase):
     def test_apply_styles_the_dialog_and_its_accept_button(self) -> None:
         dialog = QFileDialog(None, "Open File", "/tmp", "All files (*)")
         try:
+            # The native (GTK) chooser has no QDialogButtonBox at all, and Qt
+            # rebuilds the standard buttons when the dialog is shown, which is
+            # why the app dresses the dialog after show, not before. Do both.
+            dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+            dialog.show()
+            for _ in range(5):
+                self.app.processEvents()
             dialogs.apply(dialog, PALETTE, "monospace", 13)
             self.assertIn(PALETTE["background"], dialog.styleSheet())
             self.assertEqual(dialog.palette().color(QPalette.Window).name(),
