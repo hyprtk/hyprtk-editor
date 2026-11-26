@@ -13,6 +13,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from unittest import mock  # noqa: E402
 
 from PySide6.QtGui import QGuiApplication, QPalette, QWindow  # noqa: E402
+from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication, QFileDialog  # noqa: E402
 
 from hyprtk_editor.bridge import Bridge  # noqa: E402
@@ -128,7 +129,15 @@ class BridgeTest(unittest.TestCase):
     def test_git_status_shape(self) -> None:
         # Outside a repository the gutter gets a well-formed "nothing" answer
         # rather than an exception or a half-filled map.
-        status = self.bridge.gitStatus(str(Path(self.tmp.name) / "loose.txt"))
+        loose = str(Path(self.tmp.name) / "loose.txt")
+        status = self.bridge.gitStatus(loose)
+        # The gutter is filled by a worker; the first call returns what is
+        # cached (nothing) and the answer arrives on gitChanged.
+        waited = 0
+        while not status and waited < 3000:
+            QTest.qWait(25)
+            waited += 25
+            status = self.bridge.gitStatus(loose)
         self.assertEqual(set(status), {"ok", "repo", "kind", "lines", "error"})
         self.assertFalse(status["ok"])
         self.assertEqual(status["kind"], "none")
