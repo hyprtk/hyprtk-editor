@@ -260,6 +260,56 @@ class FileDialogTest(unittest.TestCase):
                 mock.patch.object(QFileDialog, "selectedFiles", return_value=[self.tmp.name]):
             self.assertEqual(self.bridge.folderDialog(self.tmp.name), self.tmp.name)
 
+    def test_qml_containers_arrive_as_qjsvalue(self) -> None:
+        """A QVariant slot is handed JS containers as an opaque QJSValue.
+
+        PySide6 6.12 passes every object *and* array that way, so a slot that
+        iterates or isinstance-checks its argument fails while QML prints a
+        TypeError and carries on. These four slots are the ones that cross the
+        boundary with a container, and the failure mode is invisible in the UI:
+        search highlights, bracket matching, every setting write and the saved
+        session silently do nothing.
+        """
+        from PySide6.QtQml import QJSEngine
+
+        js = QJSEngine()
+
+        class Recorder:
+            def __init__(self) -> None:
+                self.search = None
+                self.brackets = None
+
+            def set_search(self, values) -> None:
+                self.search = values
+
+            def set_brackets(self, positions) -> None:
+                self.brackets = positions
+
+        class FakePane:
+            alias = "text"
+
+            def __init__(self) -> None:
+                self.highlighter = Recorder()
+
+        pane = FakePane()
+        self.bridge._editors["doc"] = pane
+
+        # The exact call that used to abort a tab activation: an empty array.
+        self.bridge.setSearch("doc", js.evaluate("[]"))
+        self.assertEqual(pane.highlighter.search, [])
+
+        self.bridge.setSearch("doc", js.evaluate("[{start: 2, length: 3}, {start: 9, length: 1, current: true}]"))
+        self.assertEqual(pane.highlighter.search, [(2, 3, False), (9, 1, True)])
+
+        self.bridge.setBrackets("doc", js.evaluate("({ok: true, positions: [[1, 4], [2, 0]]})"))
+        self.assertEqual(pane.highlighter.brackets, [[1, 4], [2, 0]])
+
+        self.bridge.updateSettings(js.evaluate("({font_size: 21})"))
+        self.assertEqual(self.bridge.config.get("font_size"), 21)
+
+        self.bridge.saveSession(js.evaluate("({active: 'doc', docs: []})"))
+        self.assertEqual(self.bridge.session.load().get("active"), "doc")
+
     def write(self, name: str, text: str = "x\n") -> str:
         path = Path(self.tmp.name) / name
         path.write_text(text, encoding="utf-8")

@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QPoint, QTimer, Qt, qInstallMessageHandler  # noqa: E402
+from PySide6.QtQml import QQmlEngine, QQmlExpression  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 
 from hyprtk_editor.app import create  # noqa: E402
@@ -44,6 +45,8 @@ def main() -> int:
     root = engine.rootObjects()[0]
 
     def finish() -> None:
+        for problem in problems:
+            print(f"bootcheck: FAILED: {problem}")
         print(f"bootcheck: root objects={len(engine.rootObjects())}, warnings={len(problems)}")
         app.exit(1 if problems else 0)
 
@@ -56,12 +59,52 @@ def main() -> int:
         if not QMetaObject.invokeMethod(root, name, *args):
             problems.append(f"bootcheck: {name}() is not invokable")
 
+    def qml(expression: str):
+        """Evaluate an expression in the window's own context.
+
+        Ids such as ``welcome`` are not properties of the root object, and the
+        window itself is a QQuickWindow, so a plain property read cannot see
+        them. An expression runs in the component's scope, exactly like QML.
+        """
+        expression = QQmlExpression(QQmlEngine.contextForObject(root), root, expression)
+        value = expression.evaluate()
+        if isinstance(value, tuple):  # PySide6 hands back (value, isUndefined)
+            value = value[0]
+        if expression.hasError():
+            problems.append(f"bootcheck: expression failed: {expression.error().toString()}")
+            return None
+        return value.toVariant() if hasattr(value, "toVariant") else value
+
     def open_first() -> None:
         # An editor pane only exists once a document is open.
         path = Path(tempfile.gettempdir()) / "hyprtk-bootcheck.txt"
         path.write_text("one\ntwo\nthree\n", encoding="utf-8")
         call("openPath", Q_ARG("QVariant", str(path)))
-        QTimer.singleShot(300, new_document)
+        QTimer.singleShot(300, opened_document)
+
+    def opened_document() -> None:
+        # The document must actually be on screen. A tab strip entry and a
+        # status-bar count are not enough: the welcome screen sits above the
+        # panes, so a half-finished tab activation shows a "file opened" tab
+        # over an empty editor.
+        view = qml("welcome.visible")
+        if view is not False:
+            problems.append(f"bootcheck: welcome visible with a document open ({view!r})")
+        text = qml("win.activePane() ? win.activePane().area.text : null")
+        if text != "one\ntwo\nthree\n":
+            problems.append(f"bootcheck: opened pane text is {text!r}")
+        # Settings written from QML must reach the bridge *and* the QML-side
+        # config: JS objects and arrays cross as QJSValue, which once made every
+        # one of these a no-op.
+        before = bridge.config.get("line_numbers")
+        qml("Bridge.updateSettings({ line_numbers: !Bridge.config.line_numbers })")
+        expected = not before
+        if bridge.config.get("line_numbers") != expected:
+            problems.append("bootcheck: updateSettings() from QML did not apply")
+        if qml("win.cfg.line_numbers") != expected:
+            problems.append("bootcheck: settings change did not reach the QML config")
+        qml("Bridge.updateSettings({ line_numbers: !!Bridge.config.line_numbers })")
+        QTimer.singleShot(150, new_document)
 
     def new_document() -> None:
         # Two tabs, so the strip, the drag helpers and per-tab find all run.
