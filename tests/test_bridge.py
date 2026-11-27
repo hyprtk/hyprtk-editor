@@ -100,6 +100,17 @@ class BridgeTest(unittest.TestCase):
     def test_detect(self) -> None:
         self.assertEqual(self.bridge.detect("x.rs", "")["name"], "Rust")
 
+    def test_load_colours_ini_shaped_conf_and_rofi_themes(self) -> None:
+        conf = self.write("hyprland.conf", "$mainMod = SUPER\nbind = $mainMod, Q, killactive\n")
+        data = self.bridge.load(conf)
+        self.assertEqual(data["language"], "ini")
+        self.assertEqual(data["languageName"], "INI")
+
+        rasi = self.write("theme.rasi", "window { width: 400px; }\n")
+        data = self.bridge.load(rasi)
+        self.assertEqual(data["language"], "css")
+        self.assertEqual(data["languageName"], "CSS")
+
     def test_settings_persist(self) -> None:
         self.bridge.updateSettings({"font_size": 17, "wrap": True})
         config = Path(os.environ["XDG_CONFIG_HOME"]) / "hyprtk-editor" / "config.json"
