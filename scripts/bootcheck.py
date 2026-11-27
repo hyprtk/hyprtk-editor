@@ -76,9 +76,10 @@ def main() -> int:
         return value.toVariant() if hasattr(value, "toVariant") else value
 
     def open_first() -> None:
-        # An editor pane only exists once a document is open.
-        path = Path(tempfile.gettempdir()) / "hyprtk-bootcheck.txt"
-        path.write_text("one\ntwo\nthree\n", encoding="utf-8")
+        # An editor pane only exists once a document is open. Python source, so
+        # language detection and syntax highlighting are exercised too.
+        path = Path(tempfile.gettempdir()) / "hyprtk-bootcheck.py"
+        path.write_text('def one():\n    return "two"\n# three\n', encoding="utf-8")
         call("openPath", Q_ARG("QVariant", str(path)))
         QTimer.singleShot(300, opened_document)
 
@@ -91,7 +92,7 @@ def main() -> int:
         if view is not False:
             problems.append(f"bootcheck: welcome visible with a document open ({view!r})")
         text = qml("win.activePane() ? win.activePane().area.text : null")
-        if text != "one\ntwo\nthree\n":
+        if text != 'def one():\n    return "two"\n# three\n':
             problems.append(f"bootcheck: opened pane text is {text!r}")
         # Settings written from QML must reach the bridge *and* the QML-side
         # config: JS objects and arrays cross as QJSValue, which once made every
@@ -104,6 +105,22 @@ def main() -> int:
         if qml("win.cfg.line_numbers") != expected:
             problems.append("bootcheck: settings change did not reach the QML config")
         qml("Bridge.updateSettings({ line_numbers: !!Bridge.config.line_numbers })")
+        QTimer.singleShot(150, highlighting)
+
+    def highlighting() -> None:
+        # The highlighted spans must exist for a code file, and a settings
+        # change must apply immediately in both directions: switching syntax
+        # off used to leave the cached colours on screen until the next edit.
+        pane = bridge._editors.get(str(root.property("activeId") or ""))
+        highlighter = getattr(pane, "highlighter", None)
+        if highlighter is None or not highlighter.spans:
+            problems.append("bootcheck: a Python document opened with no highlighted spans")
+        qml("Bridge.updateSettings({ syntax: false })")
+        if highlighter is not None and (highlighter.spans or highlighter.enabled):
+            problems.append("bootcheck: switching syntax off did not clear the highlight")
+        qml("Bridge.updateSettings({ syntax: true })")
+        if highlighter is not None and not highlighter.spans:
+            problems.append("bootcheck: switching syntax on did not restore the highlight")
         QTimer.singleShot(150, new_document)
 
     def new_document() -> None:
